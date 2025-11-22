@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+langgraph
+langchain
+langchain-groq
+langchain-community
+sqlalchemy
+pandas
+matplotlib
+reportlab
+python-dotenv
+pydantic
+requests
+python-multipart
