@@ -6,6 +6,7 @@ langchain-groq
 langchain-community
 sqlalchemy
 pandas
+numpy
 matplotlib
 reportlab
 python-dotenv

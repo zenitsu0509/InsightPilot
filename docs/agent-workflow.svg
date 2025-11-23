@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with diagrams.net -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" width="960" height="360" viewBox="0 0 960 360">
+  <defs/>
+  <g font-family="Inter,Helvetica" font-size="14">
+    <rect x="40" y="150" width="150" height="60" rx="16" ry="16" fill="#E3F2FD" stroke="#1E88E5"/>
+    <text x="115" y="185" text-anchor="middle" fill="#0b1221">User Prompt</text>
+
+    <rect x="220" y="140" width="190" height="80" rx="16" ry="16" fill="#E8F5E9" stroke="#2E7D32"/>
+    <text x="315" y="175" text-anchor="middle" fill="#0b1221">LangGraph</text>
+    <text x="315" y="195" text-anchor="middle" fill="#0b1221">Orchestrator</text>
+
+    <rect x="460" y="80" width="200" height="70" rx="16" ry="16" fill="#FFF3E0" stroke="#FB8C00"/>
+    <text x="560" y="115" text-anchor="middle" fill="#0b1221">NL2SQL + DB Runner</text>
+
+    <rect x="460" y="210" width="200" height="70" rx="16" ry="16" fill="#F3E5F5" stroke="#8E24AA"/>
+    <text x="560" y="245" text-anchor="middle" fill="#0b1221">Trend &amp; Anomaly</text>
+    <text x="560" y="265" text-anchor="middle" fill="#0b1221">Modules</text>
+
+    <rect x="700" y="130" width="210" height="90" rx="16" ry="16" fill="#E0F7FA" stroke="#00838F"/>
+    <text x="805" y="165" text-anchor="middle" fill="#0b1221">Visualization &amp;</text>
+    <text x="805" y="185" text-anchor="middle" fill="#0b1221">Report Builder</text>
+
+    <rect x="40" y="40" width="200" height="70" rx="16" ry="16" fill="#FFFDE7" stroke="#FDD835"/>
+    <text x="140" y="75" text-anchor="middle" fill="#0b1221">Dataset Upload &amp;</text>
+    <text x="140" y="95" text-anchor="middle" fill="#0b1221">Catalog</text>
+
+    <rect x="700" y="250" width="210" height="80" rx="16" ry="16" fill="#FCE4EC" stroke="#AD1457"/>
+    <text x="805" y="285" text-anchor="middle" fill="#0b1221">React Analyst Dashboard</text>
+
+    <path d="M190 180 L220 180" stroke="#1E88E5" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M410 180 L460 115" stroke="#2E7D32" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M410 180 L460 245" stroke="#2E7D32" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M660 115 L700 170" stroke="#FB8C00" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M660 245 L700 200" stroke="#8E24AA" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M910 175 L950 175" stroke="#00838F" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M140 110 L140 150" stroke="#FDD835" stroke-width="2" marker-end="url(#arrow)"/>
+    <path d="M910 200 L950 280" stroke="#00838F" stroke-width="2" marker-end="url(#arrow)"/>
+  </g>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#1E88E5"/>
+    </marker>
+  </defs>
+</svg>

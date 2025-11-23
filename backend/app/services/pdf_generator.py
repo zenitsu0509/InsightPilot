@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from typing import Optional
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
@@ -14,6 +15,7 @@ from reportlab.platypus import (
     Image,
     Preformatted,
     HRFlowable,
+    PageBreak,
 )
 
 
@@ -206,6 +208,76 @@ def _build_metric_cards(stats: dict, styles):
     return table
 
 
+def _format_value(value):
+    if value is None:
+        return "—"
+    if isinstance(value, float):
+        return f"{value:,.2f}"
+    if isinstance(value, int):
+        return f"{value:,}"
+    return str(value)
+
+
+def _render_trend_section(trend_analysis, styles):
+    blocks = [Paragraph("Trend Diagnostics", styles["SectionHeader"])]
+    if not trend_analysis:
+        blocks.append(Paragraph("Not enough chronological data to compute a trend.", styles["ReportBody"]))
+        return blocks
+
+    blocks.append(Paragraph(trend_analysis.get("summary", ""), styles["ReportBody"]))
+    stats = [
+        ["Starting value", _format_value(trend_analysis.get("start"))],
+        ["Ending value", _format_value(trend_analysis.get("end"))],
+        ["Slope", _format_value(trend_analysis.get("slope"))],
+    ]
+    if trend_analysis.get("change_pct") is not None:
+        stats.append(["% Change", f"{trend_analysis['change_pct']:+.1f}%"])
+
+    table = Table(stats, colWidths=[2.3 * inch, 4 * inch])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f9fafb")),
+                ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
+                ("INNERPADDING", (0, 0), (-1, -1), 6),
+                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+            ]
+        )
+    )
+    blocks.extend([Spacer(1, 6), table])
+    return blocks
+
+
+def _render_anomaly_section(anomaly_analysis, styles):
+    blocks = [Paragraph("Anomaly Highlights", styles["SectionHeader"])]
+    if not anomaly_analysis:
+        blocks.append(Paragraph("No statistical anomalies detected across the observed period.", styles["ReportBody"]))
+        return blocks
+
+    blocks.append(Paragraph(anomaly_analysis.get("summary", ""), styles["ReportBody"]))
+    table_rows = [["Period", "Value", "z-score"]]
+    for entry in anomaly_analysis.get("anomalies", [])[:8]:
+        table_rows.append([
+            entry.get("period", "?"),
+            _format_value(entry.get("value")),
+            f"{entry.get('z_score', 0):+.2f}",
+        ])
+    table = Table(table_rows, repeatRows=1, colWidths=[2 * inch, 2.5 * inch, 1.5 * inch])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f3f4f6")),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d1d5db")),
+            ]
+        )
+    )
+    blocks.extend([Spacer(1, 6), table])
+    return blocks
+
+
 def generate_pdf_report(
     report_path: str,
     title: str,
@@ -214,6 +286,8 @@ def generate_pdf_report(
     insights: str,
     chart_image_path: str = None,
     chart_summary: str = None,
+    trend_analysis: Optional[dict] = None,
+    anomaly_analysis: Optional[dict] = None,
     data_sample=None,
 ):
     styles = _build_styles()
@@ -249,6 +323,10 @@ def generate_pdf_report(
         story.append(metric_table)
         story.append(Spacer(1, 18))
 
+    story.append(Paragraph("This auto-generated briefing captures the freshest SQL results, advanced analytics, and executive visuals from InsightPilot.", styles["ReportBody"]))
+    story.append(Spacer(1, 14))
+    story.append(PageBreak())
+
     story.append(HRFlowable(width="100%", thickness=0.6, color=colors.HexColor("#e5e7eb")))
     story.append(Spacer(1, 14))
 
@@ -268,6 +346,14 @@ def generate_pdf_report(
         story.append(Paragraph("Data Preview", styles["SectionHeader"]))
         story.append(table)
         story.append(Spacer(1, 12))
+
+    for block in _render_trend_section(trend_analysis, styles):
+        story.append(block)
+    story.append(Spacer(1, 12))
+
+    for block in _render_anomaly_section(anomaly_analysis, styles):
+        story.append(block)
+    story.append(Spacer(1, 12))
 
     if chart_image_path and os.path.exists(chart_image_path):
         story.append(Paragraph("Visualization", styles["SectionHeader"]))

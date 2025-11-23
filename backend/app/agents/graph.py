@@ -14,6 +14,7 @@ from langgraph.graph import StateGraph, END
 from app.core.config import settings
 from app.db.database import get_db_schema, engine
 from app.services.pdf_generator import generate_pdf_report
+from app.services.analytics import run_advanced_analytics
 
 matplotlib.use('Agg') # Use non-interactive backend
 
@@ -26,6 +27,8 @@ class AgentState(TypedDict, total=False):
     data: Any # Pandas DataFrame as dict or list
     visualization_path: str
     visualization_summary: str
+    trend_analysis: dict
+    anomaly_analysis: dict
     insights: str
     report_path: str
     error: str
@@ -309,6 +312,21 @@ def generate_visualization_node(state: AgentState):
 
     return {"visualization_path": image_path, "visualization_summary": plan.get("explanation")}
 
+
+def advanced_analytics_node(state: AgentState):
+    if state.get("error") or not state.get("data"):
+        return state
+
+    df = pd.DataFrame(state["data"])
+    if df.empty:
+        return {"trend_analysis": None, "anomaly_analysis": None}
+
+    analytics = run_advanced_analytics(df)
+    return {
+        "trend_analysis": analytics.get("trend"),
+        "anomaly_analysis": analytics.get("anomaly"),
+    }
+
 def generate_insights_node(state: AgentState):
     if state.get("error"):
         return state
@@ -320,13 +338,15 @@ def generate_insights_node(state: AgentState):
     data_summary = str(state["data"])[:2000] # Truncate if too long
     
     template = """
-    You are an analytics copilot. Use the latest query, the conversation history, and data sample to provide incremental insights. If the question repeats, avoid repetition by referencing earlier answers.
+    You are an analytics copilot. Use the latest query, the conversation history, the data sample, and the derived diagnostics (trends & anomalies) to provide incremental insights. If the user repeats a question, reference earlier answers instead of restating everything.
 
     History:
     {history}
 
     Current Query: {query}
     Data Sample: {data}
+    Trend Analysis: {trend}
+    Anomaly Analysis: {anomaly}
 
     Provide 3-5 concise bullet insights plus a short summary paragraph.
     """
@@ -338,6 +358,8 @@ def generate_insights_node(state: AgentState):
             "query": state["query"],
             "history": _format_history(state.get("history", [])),
             "data": data_summary,
+            "trend": json.dumps(state.get("trend_analysis") or {}, ensure_ascii=False),
+            "anomaly": json.dumps(state.get("anomaly_analysis") or {}, ensure_ascii=False),
         })
         return {"insights": insights}
     except Exception as e:
@@ -359,6 +381,8 @@ def build_report_node(state: AgentState):
             insights=state.get("insights", "No insights generated."),
             chart_image_path=state.get("visualization_path"),
             chart_summary=state.get("visualization_summary"),
+            trend_analysis=state.get("trend_analysis"),
+            anomaly_analysis=state.get("anomaly_analysis"),
             data_sample=state.get("data"),
         )
         return {"report_path": path}
@@ -373,6 +397,7 @@ def create_agent_graph():
     workflow.add_node("generate_sql", generate_sql_node)
     workflow.add_node("execute_sql", execute_sql_node)
     workflow.add_node("visualize", generate_visualization_node)
+    workflow.add_node("advanced_analytics", advanced_analytics_node)
     workflow.add_node("generate_insights", generate_insights_node)
     workflow.add_node("build_report", build_report_node)
     
@@ -381,7 +406,8 @@ def create_agent_graph():
     workflow.add_edge("get_schema", "generate_sql")
     workflow.add_edge("generate_sql", "execute_sql")
     workflow.add_edge("execute_sql", "visualize")
-    workflow.add_edge("visualize", "generate_insights")
+    workflow.add_edge("visualize", "advanced_analytics")
+    workflow.add_edge("advanced_analytics", "generate_insights")
     workflow.add_edge("generate_insights", "build_report")
     workflow.add_edge("build_report", END)
     

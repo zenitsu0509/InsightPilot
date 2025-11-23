@@ -1,15 +1,65 @@
 from collections import defaultdict
-from typing import Optional, List, Dict
+from decimal import Decimal
+import math
+from typing import Optional, List, Dict, Any
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.agents.graph import create_agent_graph
-from app.services.csv_loader import ingest_csv_dataset
+from app.services.csv_loader import ingest_csv_dataset, list_dataset_tables
+
+try:
+    import numpy as np  # type: ignore
+except Exception:  # pragma: no cover - numpy optional at runtime
+    np = None
 
 router = APIRouter()
 agent_graph = create_agent_graph()
 session_histories: Dict[str, List[dict]] = defaultdict(list)
+
+
+def _sanitize_for_json(value: Any):
+    """Recursively coerce values so FastAPI's JSON encoding never sees NaN/Inf."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, str)):
+        return value
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, Decimal):
+        as_float = float(value)
+        return as_float if math.isfinite(as_float) else None
+    if np is not None:
+        if isinstance(value, (np.floating, np.integer)):
+            coerced = value.item()
+            if isinstance(coerced, float) and not math.isfinite(coerced):
+                return None
+            return coerced
+        if isinstance(value, np.ndarray):
+            return [_sanitize_for_json(item) for item in value.tolist()]
+    if isinstance(value, dict):
+        return {key: _sanitize_for_json(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_sanitize_for_json(item) for item in value]
+    # Fallback to string representation for unsupported objects (e.g., Timestamp)
+    return str(value)
+
+
+def _safe_json(payload: Any) -> JSONResponse:
+    sanitized = _sanitize_for_json(payload)
+    encoded = jsonable_encoder(
+        sanitized,
+        custom_encoder={
+            float: lambda v: v if math.isfinite(v) else None,
+            Decimal: lambda v: float(v) if math.isfinite(float(v)) else None,
+        },
+    )
+    return JSONResponse(content=encoded)
 
 class QueryRequest(BaseModel):
     query: str
@@ -35,6 +85,8 @@ async def analyze_data(request: QueryRequest):
             "insights": result.get("insights"),
             "visualization_url": None,
             "visualization_summary": result.get("visualization_summary"),
+            "trend_analysis": result.get("trend_analysis"),
+            "anomaly_analysis": result.get("anomaly_analysis"),
             "report_url": None,
             "error": result.get("error")
         }
@@ -59,7 +111,7 @@ async def analyze_data(request: QueryRequest):
             # limit memory
             session_histories[request.session_id] = session_histories[request.session_id][-10:]
             
-        return response
+        return _safe_json(response)
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -76,9 +128,18 @@ async def upload_csv_dataset(
 ):
     try:
         payload = ingest_csv_dataset(file, table_name)
-        return {"status": "success", **payload}
+        return _safe_json({"status": "success", **payload})
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/datasets")
+async def get_dataset_catalog():
+    try:
+        catalog = list_dataset_tables()
+        return _safe_json({"tables": catalog})
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -86,4 +147,4 @@ async def upload_csv_dataset(
 @router.post("/session/reset")
 async def reset_session(req: SessionResetRequest):
     session_histories.pop(req.session_id, None)
-    return {"status": "cleared", "session_id": req.session_id}
+    return _safe_json({"status": "cleared", "session_id": req.session_id})

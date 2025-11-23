@@ -25,11 +25,16 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [activeResult, setActiveResult] = useState(null)
   const [error, setError] = useState(null)
-  const [datasetInfo, setDatasetInfo] = useState(null)
+  const [datasetCatalog, setDatasetCatalog] = useState([])
+  const [catalogLoading, setCatalogLoading] = useState(false)
+  const [tableName, setTableName] = useState('sales')
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState(null)
   const [clearing, setClearing] = useState(false)
   const messagesEndRef = useRef(null)
+  const inputRef = useRef(null)
+
+  const [datasetPreview, setDatasetPreview] = useState(null)
 
   const dataPreview = activeResult?.data ?? []
   const previewColumns = dataPreview.length ? Object.keys(dataPreview[0]) : []
@@ -42,6 +47,31 @@ function App() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  useEffect(() => {
+    if (!inputRef.current) return
+    const el = inputRef.current
+    el.style.height = 'auto'
+    const nextHeight = Math.min(el.scrollHeight, 160)
+    el.style.height = `${nextHeight}px`
+  }, [input])
+
+  const fetchDatasetCatalog = async () => {
+    setCatalogLoading(true)
+    try {
+      const res = await fetch('http://localhost:8000/api/datasets')
+      const payload = await res.json()
+      setDatasetCatalog(payload.tables || [])
+    } catch (err) {
+      console.error('Failed to fetch dataset catalog', err)
+    } finally {
+      setCatalogLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchDatasetCatalog()
+  }, [])
 
   const sendQuery = async (question) => {
     const trimmed = question.trim()
@@ -77,6 +107,8 @@ function App() {
         sql: data.sql_query,
         visualization: data.visualization_url,
         chartSummary: data.visualization_summary,
+        trendSummary: data.trend_analysis?.summary,
+        anomalySummary: data.anomaly_analysis?.summary,
         report: data.report_url
       }
 
@@ -109,7 +141,7 @@ function App() {
 
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('table_name', 'sales')
+    formData.append('table_name', tableName || 'sales')
 
     setUploading(true)
     setUploadError(null)
@@ -126,14 +158,16 @@ function App() {
         throw new Error(data.detail || 'Upload failed')
       }
 
-      setDatasetInfo({
-        filename: file.name,
-        rows: data.rows,
-        columns: data.columns,
-        encoding: data.encoding,
-        table: data.table,
-        updatedAt: new Date().toISOString()
-      })
+      if (data.preview) {
+        setDatasetPreview({
+          table: data.table,
+          columns: data.columns,
+          rows: data.preview
+        })
+        setActiveResult(null)
+      }
+
+      fetchDatasetCatalog()
     } catch (err) {
       setUploadError(err.message)
     } finally {
@@ -165,159 +199,245 @@ function App() {
 
   return (
     <div className="app-shell">
-      <header className="hero">
-        <p className="eyebrow">Autonomous Data Analyst</p>
-        <h1>Insights, SQL, and Reports in seconds</h1>
-        <p className="subtitle">
-          Ask natural-language questions about your warehouse. The agent will plan the query, validate results, draw charts, and package everything in a PDF.
-        </p>
-        <div className="prompt-chips">
-          {QUICK_PROMPTS.map((prompt) => (
-            <button key={prompt} className="chip" onClick={() => handlePromptClick(prompt)} disabled={loading}>
-              {prompt}
-            </button>
-          ))}
+      <aside className="sidebar">
+        <div className="brand">
+          <h1>InsightPilot</h1>
         </div>
 
-        <div className="dataset-panel">
-          <div>
-            <h3>Dataset Control</h3>
-            <p>Upload a CSV to refresh the `sales` table the agent queries.</p>
-            {datasetInfo ? (
-              <div className="dataset-meta">
-                <span>{datasetInfo.filename}</span>
-                <span>{datasetInfo.rows.toLocaleString()} rows · {datasetInfo.columns.length} columns</span>
-                <span>Encoding: {datasetInfo.encoding}</span>
+        <div className="sidebar-section">
+          <h3>Dataset Control</h3>
+          <div className="dataset-control">
+            <div className="input-group">
+              <label>Target Table</label>
+              <input
+                type="text"
+                value={tableName}
+                onChange={(e) => setTableName(e.target.value)}
+                placeholder="sales"
+              />
+            </div>
+            
+            <label className="upload-label">
+              {uploading ? 'Uploading...' : 'Click to Upload CSV'}
+              <input type="file" accept=".csv" onChange={handleDatasetUpload} disabled={uploading} />
+            </label>
+            {uploadError && <p className="error-text">{uploadError}</p>}
+
+            <button className="btn-secondary" onClick={fetchDatasetCatalog} disabled={catalogLoading}>
+              {catalogLoading ? 'Refreshing...' : 'Refresh Catalog'}
+            </button>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <h3>Available Tables</h3>
+          <ul className="dataset-list">
+            {datasetCatalog.length === 0 ? (
+              <li className="dataset-item">No tables found</li>
+            ) : (
+              datasetCatalog.map((table) => (
+                <li key={table.table} className="dataset-item">
+                  <strong>{table.table}</strong>
+                  <span>{table.rows?.toLocaleString()} rows</span>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <section className="chat-section">
+          <header className="chat-header">
+            <div className="status-indicator">
+              <span className={`dot ${loading ? 'busy' : ''}`}></span>
+              {loading ? 'Agent is thinking...' : 'Agent is ready'}
+            </div>
+            <button 
+              className="btn-secondary" 
+              onClick={handleClearChat}
+              disabled={loading || clearing || messages.length <= 1}
+            >
+              {clearing ? 'Clearing...' : 'Clear Chat'}
+            </button>
+          </header>
+
+          <div className="messages-container">
+            {messages.length === 1 ? (
+              <div className="welcome-screen">
+                <h2>Autonomous Data Analyst</h2>
+                <p>Ask natural-language questions about your warehouse. The agent will plan the query, validate results, draw charts, and package everything in a PDF.</p>
+                <div className="quick-prompts">
+                  {QUICK_PROMPTS.map((prompt) => (
+                    <button key={prompt} className="prompt-card" onClick={() => handlePromptClick(prompt)}>
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
-              <span className="dataset-placeholder">No custom dataset uploaded yet.</span>
+              messages.map((msg, index) => (
+                <div key={index} className={`message ${msg.type}`}>
+                  <div className="avatar">
+                    {msg.type === 'agent' ? '🤖' : '👤'}
+                  </div>
+                  <div className="message-content">
+                    <p>{msg.content}</p>
+                    {msg.sql && (
+                      <div className="sql-snippet">
+                        <code>{msg.sql}</code>
+                      </div>
+                    )}
+                    {(msg.trendSummary || msg.anomalySummary) && (
+                      <div className="diagnostic-chips">
+                        {msg.trendSummary && <span className="badge">Trend: {msg.trendSummary}</span>}
+                        {msg.anomalySummary && <span className="badge">Anomaly: {msg.anomalySummary}</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
             )}
-          </div>
-          <label className={`upload-button ${uploading ? 'disabled' : ''}`}>
-            {uploading ? 'Uploading…' : 'Upload CSV'}
-            <input type="file" accept=".csv" onChange={handleDatasetUpload} disabled={uploading} />
-          </label>
-        </div>
-        {uploadError && <p className="error-text">{uploadError}</p>}
-      </header>
-
-      <main className="dashboard">
-        <section className="panel chat-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Conversation</h2>
-              <p>Collaborative analytics workspace</p>
-            </div>
-            <div className="panel-actions">
-              <span className={`status-pill ${loading ? 'busy' : 'ready'}`}>
-                {loading ? 'Analyzing' : 'Ready'}
-              </span>
-              <button
-                type="button"
-                className="clear-chat-button"
-                onClick={handleClearChat}
-                disabled={loading || clearing || messages.length <= 1}
-              >
-                {clearing ? 'Clearing…' : 'Clear chat'}
-              </button>
-            </div>
-          </div>
-
-          <div className="messages-area">
-            {messages.map((msg, index) => (
-              <div key={index} className={`bubble ${msg.type}`}>
-                <p>{msg.content}</p>
-
-                {msg.sql && (
-                  <div className="sql-snippet">
-                    <span>Generated SQL</span>
-                    <code>{msg.sql}</code>
-                  </div>
-                )}
-
-                {msg.visualization && (
-                  <div className="viz-preview">
-                    <img src={`http://localhost:8000${msg.visualization}`} alt="Visualization" />
-                  </div>
-                )}
-
-                {msg.chartSummary && (
-                  <p className="chart-summary">{msg.chartSummary}</p>
-                )}
-
-                {msg.report && (
-                  <a className="report-chip" href={`http://localhost:8000${msg.report}`} target="_blank" rel="noreferrer">
-                    Download PDF Report
-                  </a>
-                )}
-              </div>
-            ))}
-            {loading && <div className="bubble agent">Thinking...</div>}
             <div ref={messagesEndRef} />
           </div>
 
-          <form className="input-area" onSubmit={handleSubmit}>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything about your data lake..."
-              disabled={loading}
-            />
-            <button type="submit" disabled={loading}>
-              {loading ? 'Running' : 'Send'}
-            </button>
-          </form>
-
-          {error && <p className="error-text">{error}</p>}
+          <div className="input-area">
+            <form className="input-wrapper" onSubmit={handleSubmit}>
+              <div className="input-shell">
+                <textarea
+                  ref={inputRef}
+                  rows={1}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      if (!loading) {
+                        sendQuery(input)
+                      }
+                    }
+                  }}
+                  placeholder="Ask anything about your data..."
+                  disabled={loading}
+                />
+                <button type="submit" className="send-btn" disabled={loading}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2L11 13"></path>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                  </svg>
+                </button>
+              </div>
+            </form>
+          </div>
         </section>
 
-        <section className="panel result-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Latest Analysis</h2>
-              <p>SQL · Charts · PDF</p>
-            </div>
+        <section className="results-section">
+          <div className="results-header">
+            <h2>Analysis Results</h2>
           </div>
+          <div className="results-content">
+            {datasetPreview && !activeResult && (
+              <div className="result-card">
+                <div className="card-header">
+                  <span>Uploaded Data Preview: {datasetPreview.table}</span>
+                </div>
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        {datasetPreview.columns.map(col => <th key={col}>{col}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {datasetPreview.rows.map((row, i) => (
+                        <tr key={i}>
+                          {datasetPreview.columns.map(col => <td key={col}>{row[col]}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
-          <div className="result-body">
             {activeResult ? (
-              <div className="result-stack">
-                <div className="insight-card">
-                  <p>{activeResult.insights || 'No insights generated yet.'}</p>
+              <>
+                <div className="result-card">
+                  <div className="card-header">
+                    <span>Insight</span>
+                  </div>
+                  <p>{activeResult.insights}</p>
                 </div>
 
-                {activeResult.sql_query && (
-                  <div className="meta-card">
-                    <div className="meta-head">
-                      <span>SQL used</span>
-                      <span className="badge">auto-generated</span>
+                {activeResult.visualization_url && (
+                  <div className="result-card">
+                    <div className="card-header">
+                      <span>Visualization</span>
                     </div>
-                    <code>{activeResult.sql_query}</code>
+                    <div className="viz-container">
+                      <img src={`http://localhost:8000${activeResult.visualization_url}`} alt="Visualization" />
+                    </div>
+                  </div>
+                )}
+
+                {activeResult.trend_analysis && (
+                  <div className="result-card">
+                    <div className="card-header">
+                      <span>Trend Analysis</span>
+                      <span className="badge">Diagnostic</span>
+                    </div>
+                    <p>{activeResult.trend_analysis.summary}</p>
+                    <div className="trend-grid">
+                      <div>
+                        <span>Start</span>
+                        <strong>{Number.isFinite(activeResult.trend_analysis.start) ? activeResult.trend_analysis.start.toFixed(2) : '-'}</strong>
+                      </div>
+                      <div>
+                        <span>End</span>
+                        <strong>{Number.isFinite(activeResult.trend_analysis.end) ? activeResult.trend_analysis.end.toFixed(2) : '-'}</strong>
+                      </div>
+                      <div>
+                        <span>Change</span>
+                        <strong>{activeResult.trend_analysis.change_pct?.toFixed(1)}%</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeResult.anomaly_analysis && (
+                  <div className="result-card">
+                    <div className="card-header">
+                      <span>Anomalies</span>
+                      <span className="badge">Diagnostic</span>
+                    </div>
+                    <p>{activeResult.anomaly_analysis.summary}</p>
+                    <ul className="anomaly-list">
+                      {activeResult.anomaly_analysis.anomalies?.slice(0, 3).map((a, i) => (
+                        <li key={i}>
+                          <span>{a.period}</span>
+                          <strong>z={a.z_score?.toFixed(2)}</strong>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
 
                 {previewColumns.length > 0 && (
-                  <div className="data-preview">
-                    <div className="meta-head">
-                      <span>Data preview</span>
-                      <span>{`showing ${previewRows.length} of ${dataPreview.length}`}</span>
+                  <div className="result-card">
+                    <div className="card-header">
+                      <span>Data Preview</span>
                     </div>
-                    <div className="table-wrapper">
+                    <div className="table-container">
                       <table>
                         <thead>
                           <tr>
-                            {previewColumns.map((col) => (
-                              <th key={col}>{col}</th>
-                            ))}
+                            {previewColumns.map(col => <th key={col}>{col}</th>)}
                           </tr>
                         </thead>
                         <tbody>
-                          {previewRows.map((row, idx) => (
-                            <tr key={idx}>
-                              {previewColumns.map((col) => (
-                                <td key={col}>{row[col]}</td>
-                              ))}
+                          {previewRows.map((row, i) => (
+                            <tr key={i}>
+                              {previewColumns.map(col => <td key={col}>{row[col]}</td>)}
                             </tr>
                           ))}
                         </tbody>
@@ -326,32 +446,15 @@ function App() {
                   </div>
                 )}
 
-                {activeResult.visualization_url && (
-                  <div className="viz-card">
-                    <div className="meta-head">
-                      <span>Visualization</span>
-                    </div>
-                    <img src={`http://localhost:8000${activeResult.visualization_url}`} alt="Visualization" />
-                    {activeResult.visualization_summary && (
-                      <p className="chart-summary">{activeResult.visualization_summary}</p>
-                    )}
-                  </div>
-                )}
-                {!activeResult.visualization_url && activeResult.visualization_summary && (
-                  <div className="insight-card">
-                    <p>{activeResult.visualization_summary}</p>
-                  </div>
-                )}
-
                 {activeResult.report_url && (
-                  <a className="report-button" href={`http://localhost:8000${activeResult.report_url}`} target="_blank" rel="noreferrer">
+                  <a href={`http://localhost:8000${activeResult.report_url}`} target="_blank" rel="noreferrer" className="download-btn">
                     Download PDF Report
                   </a>
                 )}
-              </div>
+              </>
             ) : (
-              <div className="empty-state">
-                <p>Run your first query to see auto-generated SQL, insights, and a PDF report.</p>
+              <div className="empty-state-results">
+                <p>Run a query to see detailed analysis, charts, and data previews here.</p>
               </div>
             )}
           </div>
