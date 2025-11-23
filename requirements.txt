@@ -1,0 +1,24 @@
+# Python dependencies from backend
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+langgraph==0.0.20
+langchain==0.1.0
+langchain-groq==0.0.1
+langchain-community==0.0.13
+sqlalchemy==2.0.25
+pandas==2.1.4
+numpy==1.26.3
+scipy==1.11.4
+statsmodels==0.14.1
+matplotlib==3.8.2
+reportlab==4.0.8
+python-dotenv==1.0.0
+pydantic==2.5.3
+requests==2.31.0
+python-multipart==0.0.6
+
+# Gradio for HF Spaces UI
+gradio==4.16.0
+
+# Additional helpful packages
+aiofiles==23.2.1
