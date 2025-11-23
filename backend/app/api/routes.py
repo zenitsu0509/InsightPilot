@@ -87,6 +87,8 @@ async def analyze_data(request: QueryRequest):
             "visualization_summary": result.get("visualization_summary"),
             "trend_analysis": result.get("trend_analysis"),
             "anomaly_analysis": result.get("anomaly_analysis"),
+            "forecast_analysis": result.get("forecast_analysis"),
+            "statistical_tests": result.get("statistical_tests"),
             "report_url": None,
             "error": result.get("error")
         }

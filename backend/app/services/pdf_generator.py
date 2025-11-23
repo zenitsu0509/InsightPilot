@@ -278,6 +278,75 @@ def _render_anomaly_section(anomaly_analysis, styles):
     return blocks
 
 
+def _render_forecast_section(forecast_analysis, styles):
+    blocks = [Paragraph("Forecast", styles["SectionHeader"])]
+    if not forecast_analysis or not forecast_analysis.get("forecasts"):
+        blocks.append(Paragraph("Forecasting unavailable for this dataset.", styles["ReportBody"]))
+        return blocks
+
+    blocks.append(Paragraph(forecast_analysis.get("summary", ""), styles["ReportBody"]))
+    
+    method = forecast_analysis.get("method", "N/A")
+    blocks.append(Spacer(1, 4))
+    blocks.append(Paragraph(f"<i>Method: {method}</i>", styles["CaptionSmall"]))
+    
+    table_rows = [["Period", "Forecast", "Lower Bound", "Upper Bound"]]
+    for entry in forecast_analysis.get("forecasts", []):
+        table_rows.append([
+            entry.get("period", "?"),
+            _format_value(entry.get("value")),
+            _format_value(entry.get("lower_bound")),
+            _format_value(entry.get("upper_bound")),
+        ])
+    
+    table = Table(table_rows, repeatRows=1, colWidths=[1.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#111827")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#f3f4f6")),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d1d5db")),
+            ]
+        )
+    )
+    blocks.extend([Spacer(1, 6), table])
+    return blocks
+
+
+def _render_statistical_tests_section(statistical_tests, styles):
+    blocks = [Paragraph("Statistical Tests", styles["SectionHeader"])]
+    if not statistical_tests or not statistical_tests.get("tests"):
+        blocks.append(Paragraph("No statistical tests performed.", styles["ReportBody"]))
+        return blocks
+
+    blocks.append(Paragraph(statistical_tests.get("summary", ""), styles["ReportBody"]))
+    blocks.append(Spacer(1, 8))
+    
+    for test_name, test_data in statistical_tests.get("tests", {}).items():
+        test_title = test_data.get("test", test_name)
+        blocks.append(Paragraph(f"<b>{test_title}</b>", styles["ReportBody"]))
+        blocks.append(Spacer(1, 2))
+        
+        details = []
+        if "comparison" in test_data:
+            details.append(f"Comparison: {test_data['comparison']}")
+        if "p_value" in test_data:
+            p_val = test_data["p_value"]
+            sig = "Yes" if test_data.get("significant", False) else "No"
+            details.append(f"p-value: {p_val:.4f} (Significant: {sig})")
+        if "summary" in test_data:
+            details.append(test_data["summary"])
+        
+        for detail in details:
+            blocks.append(Paragraph(f"• {detail}", styles["ReportBody"]))
+        
+        blocks.append(Spacer(1, 6))
+    
+    return blocks
+
+
 def generate_pdf_report(
     report_path: str,
     title: str,
@@ -288,6 +357,8 @@ def generate_pdf_report(
     chart_summary: str = None,
     trend_analysis: Optional[dict] = None,
     anomaly_analysis: Optional[dict] = None,
+    forecast_analysis: Optional[dict] = None,
+    statistical_tests: Optional[dict] = None,
     data_sample=None,
 ):
     styles = _build_styles()
@@ -352,6 +423,14 @@ def generate_pdf_report(
     story.append(Spacer(1, 12))
 
     for block in _render_anomaly_section(anomaly_analysis, styles):
+        story.append(block)
+    story.append(Spacer(1, 12))
+
+    for block in _render_forecast_section(forecast_analysis, styles):
+        story.append(block)
+    story.append(Spacer(1, 12))
+
+    for block in _render_statistical_tests_section(statistical_tests, styles):
         story.append(block)
     story.append(Spacer(1, 12))
 

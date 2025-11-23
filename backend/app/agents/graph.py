@@ -29,6 +29,8 @@ class AgentState(TypedDict, total=False):
     visualization_summary: str
     trend_analysis: dict
     anomaly_analysis: dict
+    forecast_analysis: dict
+    statistical_tests: dict
     insights: str
     report_path: str
     error: str
@@ -319,12 +321,14 @@ def advanced_analytics_node(state: AgentState):
 
     df = pd.DataFrame(state["data"])
     if df.empty:
-        return {"trend_analysis": None, "anomaly_analysis": None}
+        return {"trend_analysis": None, "anomaly_analysis": None, "forecast_analysis": None, "statistical_tests": None}
 
     analytics = run_advanced_analytics(df)
     return {
         "trend_analysis": analytics.get("trend"),
         "anomaly_analysis": analytics.get("anomaly"),
+        "forecast_analysis": analytics.get("forecast"),
+        "statistical_tests": analytics.get("statistical_tests"),
     }
 
 def generate_insights_node(state: AgentState):
@@ -338,7 +342,7 @@ def generate_insights_node(state: AgentState):
     data_summary = str(state["data"])[:2000] # Truncate if too long
     
     template = """
-    You are an analytics copilot. Use the latest query, the conversation history, the data sample, and the derived diagnostics (trends & anomalies) to provide incremental insights. If the user repeats a question, reference earlier answers instead of restating everything.
+    You are an analytics copilot. Use the latest query, the conversation history, the data sample, and the derived diagnostics (trends, anomalies, forecasts, and statistical tests) to provide incremental insights. If the user repeats a question, reference earlier answers instead of restating everything.
 
     History:
     {history}
@@ -347,8 +351,10 @@ def generate_insights_node(state: AgentState):
     Data Sample: {data}
     Trend Analysis: {trend}
     Anomaly Analysis: {anomaly}
+    Forecast Analysis: {forecast}
+    Statistical Tests: {stats}
 
-    Provide 3-5 concise bullet insights plus a short summary paragraph.
+    Provide 3-5 concise bullet insights plus a short summary paragraph. Mention forecasts and statistical significance when available.
     """
     prompt = ChatPromptTemplate.from_template(template)
     chain = prompt | llm | StrOutputParser()
@@ -360,6 +366,8 @@ def generate_insights_node(state: AgentState):
             "data": data_summary,
             "trend": json.dumps(state.get("trend_analysis") or {}, ensure_ascii=False),
             "anomaly": json.dumps(state.get("anomaly_analysis") or {}, ensure_ascii=False),
+            "forecast": json.dumps(state.get("forecast_analysis") or {}, ensure_ascii=False),
+            "stats": json.dumps(state.get("statistical_tests") or {}, ensure_ascii=False),
         })
         return {"insights": insights}
     except Exception as e:
@@ -383,6 +391,8 @@ def build_report_node(state: AgentState):
             chart_summary=state.get("visualization_summary"),
             trend_analysis=state.get("trend_analysis"),
             anomaly_analysis=state.get("anomaly_analysis"),
+            forecast_analysis=state.get("forecast_analysis"),
+            statistical_tests=state.get("statistical_tests"),
             data_sample=state.get("data"),
         )
         return {"report_path": path}

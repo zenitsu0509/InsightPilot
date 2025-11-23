@@ -422,6 +422,85 @@ function App() {
                   </div>
                 )}
 
+                {activeResult.forecast_analysis && (
+                  <div className="result-card">
+                    <div className="card-header">
+                      <span>Forecast</span>
+                      <span className="badge">Predictive</span>
+                    </div>
+                    <p>{activeResult.forecast_analysis.summary}</p>
+                    {activeResult.forecast_analysis.method && (
+                      <div style={{marginTop: '0.5rem', fontSize: '0.85rem', color: '#8899aa'}}>
+                        Method: {activeResult.forecast_analysis.method}
+                      </div>
+                    )}
+                    {activeResult.forecast_analysis.forecasts && (
+                      <div className="table-container" style={{marginTop: '1rem'}}>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Period</th>
+                              <th>Forecast</th>
+                              <th>Lower Bound</th>
+                              <th>Upper Bound</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {activeResult.forecast_analysis.forecasts.map((f, i) => (
+                              <tr key={i}>
+                                <td>{f.period}</td>
+                                <td>{Number.isFinite(f.value) ? f.value.toFixed(2) : '-'}</td>
+                                <td>{Number.isFinite(f.lower_bound) ? f.lower_bound.toFixed(2) : '-'}</td>
+                                <td>{Number.isFinite(f.upper_bound) ? f.upper_bound.toFixed(2) : '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeResult.statistical_tests && (
+                  <div className="result-card">
+                    <div className="card-header">
+                      <span>Statistical Tests</span>
+                      <span className="badge">Diagnostic</span>
+                    </div>
+                    <p>{activeResult.statistical_tests.summary}</p>
+                    <div style={{marginTop: '1rem'}}>
+                      {activeResult.statistical_tests.tests && Object.entries(activeResult.statistical_tests.tests).map(([testName, testData]) => (
+                        <div key={testName} style={{marginBottom: '1rem', padding: '0.75rem', background: '#1e2430', borderRadius: '6px'}}>
+                          <div style={{fontWeight: '600', marginBottom: '0.5rem', textTransform: 'capitalize'}}>
+                            {testName.replace(/_/g, ' ')}
+                          </div>
+                          <div style={{fontSize: '0.9rem', color: '#8899aa'}}>
+                            {testData.summary || testData.test || '-'}
+                          </div>
+                          {testData.p_value !== undefined && (
+                            <div style={{marginTop: '0.5rem', fontSize: '0.85rem'}}>
+                              <span style={{color: '#8899aa'}}>p-value: </span>
+                              <span style={{fontFamily: 'monospace', color: testData.significant || testData.is_stationary === false ? '#ff6b6b' : '#51cf66'}}>
+                                {Number.isFinite(testData.p_value) ? testData.p_value.toFixed(4) : '-'}
+                              </span>
+                              {testData.significant !== undefined && (
+                                <span style={{marginLeft: '0.75rem', color: testData.significant ? '#ff6b6b' : '#51cf66'}}>
+                                  {testData.significant ? '✓ Significant' : '○ Not Significant'}
+                                </span>
+                              )}
+                              {testData.is_stationary !== undefined && (
+                                <span style={{marginLeft: '0.75rem', color: testData.is_stationary ? '#51cf66' : '#ff6b6b'}}>
+                                  {testData.is_stationary ? '✓ Stationary' : '○ Non-Stationary'}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {previewColumns.length > 0 && (
                   <div className="result-card">
                     <div className="card-header">
