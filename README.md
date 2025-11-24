@@ -49,7 +49,7 @@ cd backend
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-cp .env.example .env            # add GROQ_API_KEY and optional DATABASE_URL
+cp .env.example .env            # add GROQ_API_KEY, DATABASE_URL, FRONTEND_ORIGINS
 python create_db.py             # optional; startup also seeds the sales table
 python -m app.main              # runs on http://localhost:8000
 ```
@@ -61,7 +61,9 @@ python -m app.main              # runs on http://localhost:8000
 ```bash
 cd frontend
 npm install
+cp .env.example .env            # point VITE_API_BASE_URL at your API (Render URL in production)
 npm run dev                     # http://localhost:5173
+npm run build                   # optional: confirm production build before deploying
 ```
 
 ## Usage Flow
@@ -104,6 +106,25 @@ frontend/
   src/App.jsx, App.css       # React dashboard
   package.json
 ```
+
+## Deployment
+
+### Backend (Render)
+
+1. Push this repository to GitHub and connect it to Render via **New → Blueprint**.
+2. When prompted, Render will detect `render.yaml` and scaffold a Python web service using the `backend/` directory.
+3. Set environment variables in the Render dashboard:
+   - `GROQ_API_KEY` – required for Groq LLM access.
+   - `DATABASE_URL` – optional override if you move off the default SQLite file.
+   - `FRONTEND_ORIGINS` – comma-separated list of allowed frontend URLs (add your Vercel domain once it is available).
+4. Deploy; the service runs `uvicorn app.main:app --host 0.0.0.0 --port 8000` by default. Note the public base URL for the next step.
+
+### Frontend (Vercel)
+
+1. In Vercel, create a new project from this repo and target the `frontend/` directory as the project root.
+2. Ensure the build settings match the included `vercel.json`: `npm run build` with `dist` as the output directory (framework set to **Vite**).
+3. Add the environment variable `VITE_API_BASE_URL` pointing to the Render backend URL (e.g., `https://insightpilot-api.onrender.com`).
+4. Trigger a deploy; the React app now uses environment configuration to call the hosted API and serves from the Vercel edge.
 
 ## Future Ideas
 

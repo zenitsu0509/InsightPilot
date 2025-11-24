@@ -1,6 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
 
+const rawApiBase = import.meta.env.VITE_API_BASE_URL
+const API_BASE_URL = (rawApiBase && rawApiBase.trim() ? rawApiBase.trim() : 'http://localhost:8000').replace(/\/$/, '')
+
+const resolveApiUrl = (path = '') => {
+  if (!path) return API_BASE_URL
+  if (/^https?:\/\//i.test(path)) {
+    return path
+  }
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+}
+
 const QUICK_PROMPTS = [
   'What were total sales by category?',
   'Compare revenue by region last quarter',
@@ -59,7 +70,7 @@ function App() {
   const fetchDatasetCatalog = async () => {
     setCatalogLoading(true)
     try {
-      const res = await fetch('http://localhost:8000/api/datasets')
+      const res = await fetch(resolveApiUrl('/api/datasets'))
       const payload = await res.json()
       setDatasetCatalog(payload.tables || [])
     } catch (err) {
@@ -84,7 +95,7 @@ function App() {
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:8000/api/analyze', {
+      const response = await fetch(resolveApiUrl('/api/analyze'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -147,7 +158,7 @@ function App() {
     setUploadError(null)
 
     try {
-      const response = await fetch('http://localhost:8000/api/upload-csv', {
+      const response = await fetch(resolveApiUrl('/api/upload-csv'), {
         method: 'POST',
         body: formData
       })
@@ -185,7 +196,7 @@ function App() {
     setError(null)
 
     try {
-      await fetch('http://localhost:8000/api/session/reset', {
+      await fetch(resolveApiUrl('/api/session/reset'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId })
@@ -375,7 +386,7 @@ function App() {
                       <span>Visualization</span>
                     </div>
                     <div className="viz-container">
-                      <img src={`http://localhost:8000${activeResult.visualization_url}`} alt="Visualization" />
+                      <img src={resolveApiUrl(activeResult.visualization_url)} alt="Visualization" />
                     </div>
                   </div>
                 )}
@@ -526,7 +537,7 @@ function App() {
                 )}
 
                 {activeResult.report_url && (
-                  <a href={`http://localhost:8000${activeResult.report_url}`} target="_blank" rel="noreferrer" className="download-btn">
+                  <a href={resolveApiUrl(activeResult.report_url)} target="_blank" rel="noreferrer" className="download-btn">
                     Download PDF Report
                   </a>
                 )}

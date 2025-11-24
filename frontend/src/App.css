@@ -380,19 +380,20 @@ body {
 }
 
 .input-wrapper {
-  max-width: 1500px;
+  width: min(1800px, 95vw);
   margin: 0 auto;
   position: relative;
 }
 .input-shell {
   display: flex;
-  align-items: flex-end;
-  gap: 1rem;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
   background: var(--bg-panel);
-  border: 2px solid var(--border-color);
-  padding: 1.5rem 1.5rem 1.5rem 2rem;
-  border-radius: 999px;
-  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  padding: 0.85rem 1.8rem 0.85rem 1.5rem;
+  border-radius: 58px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.4);
   transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
@@ -406,13 +407,13 @@ body {
   width: 100%;
   background: transparent;
   border: none;
-  padding: 0;
+  padding: 0.05rem 0;
   border-radius: 0;
   color: var(--text-main);
-  font-size: 1.05rem;
+  font-size: 1rem;
   resize: none;
-  min-height: 50px;
-  line-height: 1.6;
+  min-height: 42px;
+  line-height: 1.48;
   overflow: hidden;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -425,21 +426,21 @@ body {
   flex-shrink: 0;
   border: none;
   background: linear-gradient(135deg, #60a5fa, #8b5cf6);
-  width: 80px;
-  height: 56px;
-  border-radius: 999px;
+  width: 72px;
+  height: 38px;
+  border-radius: 48px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 7px 18px rgba(99, 102, 241, 0.25);
   transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
 }
 
 .send-btn svg {
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   stroke: currentColor;
   fill: none;
 }
