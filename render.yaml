@@ -1,16 +1,25 @@
-services:
-  - type: web
-    name: insightpilot-api
-    env: python
-    rootDirectory: backend
-    plan: free
-    pythonVersion: 3.12
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    envVars:
-      - key: GROQ_API_KEY
-        sync: false
-      - key: DATABASE_URL
-        sync: false
-      - key: FRONTEND_ORIGINS
-        sync: false
+version: "1"
+projects:
+  - name: insightpilot
+    environments:
+      - name: Production
+        services:
+          - type: web
+            name: insightpilot-api
+            runtime: python
+            repo: https://github.com/zenitsu0509/InsightPilot
+            plan: free
+            region: oregon
+            rootDir: backend
+            buildCommand: pip install -r requirements.txt
+            startCommand: uvicorn app.main:app --host 0.0.0.0 --port 8000
+            autoDeployTrigger: commit
+            envVars:
+              - key: PYTHON_VERSION
+                value: "3.12.0"
+              - key: GROQ_API_KEY
+                sync: false
+              - key: DATABASE_URL
+                sync: false
+              - key: FRONTEND_ORIGINS
+                sync: false
