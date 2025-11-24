@@ -10,9 +10,8 @@ projects:
             repo: https://github.com/zenitsu0509/InsightPilot
             plan: free
             region: oregon
-            rootDir: backend
-            buildCommand: pip install -r requirements.txt
-            startCommand: python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+            buildCommand: cd backend && pip install -r requirements.txt
+            startCommand: cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
             autoDeployTrigger: commit
             envVars:
               - key: PYTHON_VERSION
