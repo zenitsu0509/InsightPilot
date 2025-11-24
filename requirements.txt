@@ -17,8 +17,6 @@ pydantic==2.5.3
 requests==2.31.0
 python-multipart==0.0.6
 
-# Gradio for HF Spaces UI
-gradio==4.16.0
 
 # Additional helpful packages
 aiofiles==23.2.1

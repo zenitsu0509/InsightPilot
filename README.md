@@ -112,7 +112,7 @@ frontend/
 ### Backend (Render)
 
 1. Push this repository to GitHub and connect it to Render via **New → Blueprint**.
-2. When prompted, Render will detect `render.yaml` and scaffold a Python web service using the `backend/` directory.
+2. When prompted, Render will detect `render.yaml` and scaffold a Python web service using the `backend/` directory (the blueprint pins `pythonVersion: 3.12` so pandas wheels install cleanly).
 3. Set environment variables in the Render dashboard:
    - `GROQ_API_KEY` – required for Groq LLM access.
    - `DATABASE_URL` – optional override if you move off the default SQLite file.
